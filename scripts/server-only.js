@@ -9,10 +9,13 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { exec } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
+
+console.log('🔄 Building server-only version for Render deployment...');
 
 // Tạo dist directory nếu không tồn tại
 if (!fs.existsSync(path.join(rootDir, 'dist'))) {
@@ -22,6 +25,82 @@ if (!fs.existsSync(path.join(rootDir, 'dist'))) {
 if (!fs.existsSync(path.join(rootDir, 'dist', 'public'))) {
   fs.mkdirSync(path.join(rootDir, 'dist', 'public'));
 }
+
+// Biên dịch TypeScript thành JavaScript
+console.log('🔄 Transpiling TypeScript server files to JavaScript...');
+
+// Sao chép các file từ thư mục server và shared vào dist
+const copyServerFiles = () => {
+  // Tạo danh sách các file cần sao chép và biến đổi
+  const filesToProcess = [
+    {
+      source: 'server/routes.ts',
+      dest: 'dist/routes.js',
+    },
+    {
+      source: 'server/storage.ts',
+      dest: 'dist/storage.js',
+    },
+    {
+      source: 'shared/schema.ts',
+      dest: 'dist/schema.js',
+    }
+  ];
+
+  // Đảm bảo các thư mục đích tồn tại
+  filesToProcess.forEach(file => {
+    const destDir = path.dirname(path.join(rootDir, file.dest));
+    if (!fs.existsSync(destDir)) {
+      fs.mkdirSync(destDir, { recursive: true });
+    }
+  });
+
+  // Sử dụng esbuild để biên dịch TypeScript -> JavaScript
+  const esbuildImport = `import { build } from 'esbuild';
+
+  async function transpileFiles() {
+    for (const file of ${JSON.stringify(filesToProcess)}) {
+      try {
+        await build({
+          entryPoints: [file.source],
+          outfile: file.dest,
+          platform: 'node',
+          format: 'esm',
+          target: 'node18',
+          bundle: false,
+        });
+        console.log(\`✅ Transpiled \${file.source} to \${file.dest}\`);
+      } catch (error) {
+        console.error(\`❌ Error transpiling \${file.source}:\`, error);
+        process.exit(1);
+      }
+    }
+  }
+
+  transpileFiles();
+  `;
+
+  const tempFile = path.join(rootDir, 'temp-transpile.mjs');
+  fs.writeFileSync(tempFile, esbuildImport);
+  
+  return new Promise((resolve, reject) => {
+    exec(`node ${tempFile}`, (error, stdout, stderr) => {
+      if (stdout) console.log(stdout);
+      if (stderr) console.error(stderr);
+      
+      // Xóa file tạm
+      fs.unlinkSync(tempFile);
+      
+      if (error) {
+        console.error('❌ Error transpiling TypeScript files:', error);
+        reject(error);
+        return;
+      }
+      
+      resolve();
+    });
+  });
+};
 
 // Tạo một file server đơn giản không phụ thuộc vào vite
 const serverCode = `import express from "express";
@@ -115,13 +194,19 @@ storage.createDefaultUser();
 export default server;
 `;
 
-fs.writeFileSync(path.join(rootDir, 'dist', 'index.js'), serverCode);
-console.log('✅ Created server-only version in dist/index.js');
-
-// Tạo một file index.html đơn giản trong dist/public
-fs.writeFileSync(
-  path.join(rootDir, 'dist', 'public', 'index.html'),
-  `<!DOCTYPE html>
+async function buildServerOnly() {
+  try {
+    // Bước 1: Sao chép và biên dịch các file TypeScript
+    await copyServerFiles();
+    
+    // Bước 2: Tạo file index.js
+    fs.writeFileSync(path.join(rootDir, 'dist', 'index.js'), serverCode);
+    console.log('✅ Created server-only version in dist/index.js');
+    
+    // Bước 3: Tạo một file index.html đơn giản trong dist/public
+    fs.writeFileSync(
+      path.join(rootDir, 'dist', 'public', 'index.html'),
+      `<!DOCTYPE html>
 <html>
 <head>
   <title>Vocabulary Learning API</title>
@@ -140,7 +225,14 @@ fs.writeFileSync(
   <p>The API endpoints are available at <code>/api/*</code></p>
 </body>
 </html>`
-);
+    );
+    console.log('✅ Created dist/public/index.html');
+    
+    console.log('🚀 Server-only build completed successfully!');
+  } catch (error) {
+    console.error('❌ Build failed:', error);
+    process.exit(1);
+  }
+}
 
-console.log('✅ Created dist/public/index.html');
-console.log('🚀 Server-only build completed successfully!');
+buildServerOnly();
