@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+'use strict';
 
 /**
  * Script này tạo một phiên bản đơn giản của server chỉ phục vụ API - không có Vite hoặc client.
@@ -22,6 +22,23 @@ if (!fs.existsSync(path.join(rootDir, 'dist', 'public'))) {
   fs.mkdirSync(path.join(rootDir, 'dist', 'public'));
 }
 
+// Tạo một package.json mặc định trong dist
+fs.writeFileSync(
+  path.join(rootDir, 'dist', 'package.json'),
+  `{
+  "name": "vocab-learning-api",
+  "version": "1.0.0",
+  "description": "Vocabulary Learning API Server",
+  "main": "index.js",
+  "type": "commonjs",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}`
+);
+console.log('✅ Created dist/package.json');
+
 // Tạo một all-in-one file server đơn giản không phụ thuộc vào vite
 console.log('🔄 Creating all-in-one server file with bundled dependencies...');
 
@@ -37,12 +54,17 @@ const extractSchemaCode = () => {
     .replace(/import.*from.*;\n/g, '')
     // Giữ lại các khai báo và loại bỏ export từ khóa
     .replace(/export const/g, 'const')
-    .replace(/export type/g, 'type');
+    // Xóa các TypeScript types
+    .replace(/export type.*$/gm, '')
+    // Xóa các TypeScript type annotations
+    .replace(/\.\$type<[^>]+>\(\)/g, '()')
+    // Xóa các type definitions
+    .replace(/type\s+\w+\s*=\s*[^;]+;/g, '');
 
   return `// Schema definitions
 function setupSchema() {
   const { 
-    pgTable, serial, varchar, text, json, integer, boolean, timestamp, date 
+    pgTable, serial, varchar, text, json, integer, boolean, timestamp, date, jsonb 
   } = pg;
   
   // Zod schemas
@@ -69,7 +91,8 @@ function setupSchema() {
 };
 
 // Tạo một file server đơn giản không phụ thuộc vào TypeScript
-const serverCode = `// All-in-one server file - Generated for Render deployment
+const serverCode = `'use strict';
+// All-in-one server file - Generated for Render deployment
 const express = require('express');
 const cors = require('cors');
 const { Server } = require('http');
@@ -1005,32 +1028,6 @@ storage.createDefaultUser();
 
 module.exports = server;
 `;
-
-// Tạo thư mục dist nếu chưa tồn tại
-if (!fs.existsSync(path.join(rootDir, 'dist'))) {
-  fs.mkdirSync(path.join(rootDir, 'dist'));
-}
-
-if (!fs.existsSync(path.join(rootDir, 'dist', 'public'))) {
-  fs.mkdirSync(path.join(rootDir, 'dist', 'public'));
-}
-
-// Tạo một package.json mặc định trong dist
-fs.writeFileSync(
-  path.join(rootDir, 'dist', 'package.json'),
-  `{
-  "name": "vocab-learning-api",
-  "version": "1.0.0",
-  "description": "Vocabulary Learning API Server",
-  "main": "index.js",
-  "type": "commonjs",
-  "private": true,
-  "engines": {
-    "node": ">=18.0.0"
-  }
-}`
-);
-console.log('✅ Created dist/package.json');
 
 // Ghi file server vào thư mục dist
 fs.writeFileSync(path.join(rootDir, 'dist', 'index.js'), serverCode);

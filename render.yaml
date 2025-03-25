@@ -2,7 +2,7 @@ services:
   - type: web
     name: vocab-learning-api
     env: node
-    buildCommand: npm install && cp -r node_modules dist/ && node scripts/server-only.js
+    buildCommand: npm install && cp -r node_modules dist/ && node scripts/server-only.cjs
     startCommand: cd dist && node index.js
     envVars:
       - key: NODE_ENV
