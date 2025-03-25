@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: vocab-learning-api
+    name: vocab-learning-api2
     env: node
     buildCommand: npm install && cd scripts && node server-only.cjs && cd .. && cp -r node_modules dist/
     startCommand: cd dist && node index.js
