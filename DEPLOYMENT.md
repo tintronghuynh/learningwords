@@ -25,7 +25,7 @@ git push -u origin main
 4. Cấu hình dịch vụ web:
    - **Tên**: vocab-learning-api
    - **Environment**: Node
-   - **Build Command**: `npm install && node scripts/server-only.js`
+   - **Build Command**: `npm install && node scripts/server-only.cjs`
    - **Start Command**: `node dist/index.js`
    - **Branch**: main (hoặc branch bạn muốn triển khai)
 
@@ -100,7 +100,7 @@ Sau khi cả hai dịch vụ đã được triển khai, bạn cần cập nhậ
 
 ## Giải thích về các scripts build
 
-- `scripts/server-only.js`: Script này được sử dụng để tạo một phiên bản server-only cho Render mà không phụ thuộc vào vite. Script này sẽ:
+- `scripts/server-only.cjs`: Script này được sử dụng để tạo một phiên bản server-only cho Render mà không phụ thuộc vào vite. Script này sẽ:
   - Tạo một file server đơn giản không sử dụng vite
   - Tạo thư mục `dist/public` và file `index.html` cơ bản
   - Tạo một phiên bản đơn giản của server code tập trung vào API endpoints
