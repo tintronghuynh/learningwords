@@ -66,6 +66,10 @@ const extractSchemaCode = () => {
     // Xử lý các trường hợp đặc biệt của TypeScript annotations
     .replace(/\.notNull\(\)\.\(\)/g, '.notNull()')
     .replace(/\.notNull\(\)\./g, '.notNull(),')
+    .replace(/\),unique\(\)/g, ').unique()')
+    .replace(/,unique\(\)/g, '.unique()')
+    // Sửa lỗi dấu phẩy trùng lặp
+    .replace(/,,/g, ',')
     // Xóa các type definitions
     .replace(/type\s+\w+\s*=\s*[^;]+;/g, '');
 
