@@ -10,4 +10,4 @@ services:
       - key: DATABASE_URL
         sync: false # Sẽ cấu hình thủ công trong Render dashboard
       - key: ALLOWED_ORIGINS
-        value: "https://vocab-learning.netlify.app"
+        value: "https://benevolent-sopapillas-c9c9e9.netlify.app"

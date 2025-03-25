@@ -17,10 +17,15 @@ function getApiUrl(endpoint: string): string {
   // Đảm bảo endpoint bắt đầu bằng / nếu chưa có
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   
-  // Trong môi trường production, sử dụng API URL từ biến môi trường
-  const apiBaseUrl = import.meta.env.VITE_API_URL || '';
-  if (apiBaseUrl && import.meta.env.PROD) {
-    return `${apiBaseUrl}${normalizedEndpoint}`;
+  // Trong môi trường production
+  if (import.meta.env.PROD) {
+    // Nếu endpoint đã bắt đầu với /api, không thêm đường dẫn
+    if (normalizedEndpoint.startsWith('/api')) {
+      return normalizedEndpoint; // Sử dụng Netlify proxy
+    }
+    
+    // Nếu không, thêm /api vào đầu để sử dụng Netlify proxy
+    return `/api${normalizedEndpoint}`;
   }
   
   // Trong môi trường development, sử dụng đường dẫn tương đối
