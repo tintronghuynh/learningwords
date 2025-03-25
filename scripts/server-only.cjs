@@ -56,8 +56,16 @@ const extractSchemaCode = () => {
     .replace(/export const/g, 'const')
     // Xóa các TypeScript types
     .replace(/export type.*$/gm, '')
-    // Xóa các TypeScript type annotations
-    .replace(/\.\$type<[^>]+>\(\)/g, '()')
+    // Xóa các TypeScript type annotations - thêm các pattern phổ biến
+    .replace(/\.\$type<[^>]+>\(\)/g, '')
+    .replace(/\$type<z\.infer<typeof [^>]+>\[\]>\(\)/g, '')
+    .replace(/\.\$type<[^>]+>/g, '')
+    .replace(/\$type<[^>]+>/g, '')
+    .replace(/<z\.infer<typeof [^>]+>\[\]>/g, '')
+    .replace(/<[^>]+>/g, '')
+    // Xử lý các trường hợp đặc biệt của TypeScript annotations
+    .replace(/\.notNull\(\)\.\(\)/g, '.notNull()')
+    .replace(/\.notNull\(\)\./g, '.notNull(),')
     // Xóa các type definitions
     .replace(/type\s+\w+\s*=\s*[^;]+;/g, '');
 
