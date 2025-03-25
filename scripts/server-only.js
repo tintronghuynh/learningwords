@@ -5,14 +5,10 @@
  * Được sử dụng cho việc triển khai trên Render.
  */
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-import { execSync } from 'child_process';
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 
 console.log('🔄 Building server-only version for Render deployment...');
@@ -44,7 +40,7 @@ const extractSchemaCode = () => {
     .replace(/export type/g, 'type');
 
   return `// Schema definitions
-const setupSchema = () => {
+function setupSchema() {
   const { 
     pgTable, serial, varchar, text, json, integer, boolean, timestamp, date 
   } = pg;
@@ -68,27 +64,22 @@ const setupSchema = () => {
     wordSchema,
     dictionarySchema,
   };
-};
+}
 `;
 };
 
 // Tạo một file server đơn giản không phụ thuộc vào TypeScript
 const serverCode = `// All-in-one server file - Generated for Render deployment
-import express from "express";
-import cors from "cors";
-import { Server } from "http";
-import session from "express-session";
-import { Pool } from "pg";
-import { drizzle } from "drizzle-orm/node-postgres";
-import { eq, and, sql, desc, isNull, or, asc, gt, lt, between } from "drizzle-orm";
-import * as pg from "drizzle-orm/pg-core";
-import * as zod from "zod";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const express = require('express');
+const cors = require('cors');
+const { Server } = require('http');
+const session = require('express-session');
+const { Pool } = require('pg');
+const { drizzle } = require('drizzle-orm/node-postgres');
+const { eq, and, sql, desc, isNull, or, asc, gt, lt, between } = require('drizzle-orm');
+const pg = require('drizzle-orm/pg-core');
+const zod = require('zod');
+const path = require('path');
 
 // ----- SCHEMA DEFINITIONS -----
 ${extractSchemaCode()}
@@ -1012,7 +1003,7 @@ server.listen(PORT, "0.0.0.0", () => {
 // Khởi tạo user mặc định nếu chưa có
 storage.createDefaultUser();
 
-export default server;
+module.exports = server;
 `;
 
 // Tạo thư mục dist nếu chưa tồn tại
@@ -1023,6 +1014,23 @@ if (!fs.existsSync(path.join(rootDir, 'dist'))) {
 if (!fs.existsSync(path.join(rootDir, 'dist', 'public'))) {
   fs.mkdirSync(path.join(rootDir, 'dist', 'public'));
 }
+
+// Tạo một package.json mặc định trong dist
+fs.writeFileSync(
+  path.join(rootDir, 'dist', 'package.json'),
+  `{
+  "name": "vocab-learning-api",
+  "version": "1.0.0",
+  "description": "Vocabulary Learning API Server",
+  "main": "index.js",
+  "type": "commonjs",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}`
+);
+console.log('✅ Created dist/package.json');
 
 // Ghi file server vào thư mục dist
 fs.writeFileSync(path.join(rootDir, 'dist', 'index.js'), serverCode);
