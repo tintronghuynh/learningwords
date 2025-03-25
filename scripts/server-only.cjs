@@ -50,8 +50,11 @@ const schemaContent = fs.readFileSync(schemaPath, 'utf8');
 // và gói trong một hàm để tránh xung đột tên biến
 const extractSchemaCode = () => {
   let code = schemaContent
-    // Loại bỏ các import
-    .replace(/import.*from.*;\n/g, '')
+    // Loại bỏ các import ngoại trừ createInsertSchema
+    .replace(/import\s+(?!{\s*createInsertSchema\s*}).*from.*;\n/g, '')
+    .replace(/import\s+{(?!\s*createInsertSchema\s*[,}]).*}\s+from.*;\n/g, '')
+    // Đã có import createInsertSchema từ require ở trên, nên loại bỏ import này
+    .replace(/import\s+{\s*createInsertSchema\s*}\s+from\s+["']drizzle-zod["'];\n/g, '')
     // Giữ lại các khai báo và loại bỏ export từ khóa
     .replace(/export const/g, 'const')
     // Xóa các TypeScript types
@@ -81,6 +84,7 @@ function setupSchema() {
   
   // Zod schemas
   const z = zod;
+  // Use createInsertSchema from drizzle-zod
 
   ${code}
 
@@ -114,6 +118,7 @@ const { drizzle } = require('drizzle-orm/node-postgres');
 const { eq, and, sql, desc, isNull, or, asc, gt, lt, between } = require('drizzle-orm');
 const pg = require('drizzle-orm/pg-core');
 const zod = require('zod');
+const { createInsertSchema } = require('drizzle-zod');
 const path = require('path');
 
 // ----- SCHEMA DEFINITIONS -----
