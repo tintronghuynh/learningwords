@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: vocab-learning-api
+    env: node
+    buildCommand: npm install && node scripts/server-only.js
+    startCommand: node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # Sẽ cấu hình thủ công trong Render dashboard
+      - key: ALLOWED_ORIGINS
+        value: "https://vocab-learning.netlify.app"

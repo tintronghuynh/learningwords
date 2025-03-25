@@ -1,7 +1,18 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "bash", "web", "postgresql-16"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
 
 [workflows]
 runButton = "Project"
@@ -13,14 +24,14 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Run Utils JS"
+args = "Start application"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "run_utils"
+args = "prepare-deploy"
 
 [[workflows.workflow]]
-name = "Run Utils JS"
+name = "Start application"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -31,10 +42,11 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node utils.js"
+args = "npm run dev"
+waitForPort = 5000
 
 [[workflows.workflow]]
-name = "run_utils"
+name = "prepare-deploy"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -45,7 +57,4 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node utils.js"
-
-[deployment]
-run = ["sh", "-c", "node utils.js"]
+args = "node scripts/prepare-deploy.js https://vocab-learning.netlify.app https://vocab-learning-api.onrender.com"
