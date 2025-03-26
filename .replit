@@ -30,6 +30,10 @@ args = "Start application"
 task = "workflow.run"
 args = "prepare-deploy"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "migrate-local"
+
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
@@ -58,3 +62,17 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "node scripts/prepare-deploy.js https://vocab-learning.netlify.app https://vocab-learning-api.onrender.com"
+
+[[workflows.workflow]]
+name = "migrate-local"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node scripts/apply-migrations.js"

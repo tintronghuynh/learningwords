@@ -85,7 +85,7 @@ export const insertVocabularyWordSchema = createInsertSchema(vocabularyWords).pi
 export const userStats = pgTable("user_stats", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  date: timestamp("date").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
   wordsStudied: integer("words_studied").default(0).notNull(),
   wordsLearned: integer("words_learned").default(0).notNull(),
 });
