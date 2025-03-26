@@ -18,18 +18,17 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
 }
 
-// Create the connection with SSL enabled for Neon Database if in production
-let connectionOptions = {};
+// Create the connection with SSL enabled for Neon Database
+const connectionString = process.env.DATABASE_URL;
+console.log(`Setting up database connection, NODE_ENV=${process.env.NODE_ENV}`);
 
-// If we're connecting to Neon on production, enable SSL
-if (process.env.NODE_ENV === 'production') {
-  connectionOptions = { 
-    ssl: true,
-    max: 10 // Maximum number of connections
-  };
-}
-
-const client = postgres(process.env.DATABASE_URL, connectionOptions);
+const client = postgres(connectionString, {
+  ssl: { rejectUnauthorized: false },
+  max: 10, 
+  connect_timeout: 10,
+  idle_timeout: 20,
+  max_lifetime: 60 * 30
+});
 const db = drizzle(client);
 
 export interface IStorage {
@@ -252,16 +251,19 @@ export class PostgresStorage implements IStorage {
   // Vocabulary Word operations
   async createVocabularyWord(insertWord: InsertVocabularyWord): Promise<VocabularyWord> {
     try {
-      const result = await db.insert(vocabularyWords).values({
-        groupId: insertWord.groupId,
+      // Chuyển đổi từ InsertVocabularyWord sang định dạng dữ liệu thích hợp cho drizzle
+      const values = {
+        group_id: insertWord.groupId,
         word: insertWord.word,
         ipa: insertWord.ipa,
-        partOfSpeech: insertWord.partOfSpeech,
+        part_of_speech: insertWord.partOfSpeech,
         definition: insertWord.definition,
         meanings: insertWord.meanings,
         learned: false,
         level: 1,
-      }).returning();
+      };
+      
+      const result = await db.insert(vocabularyWords).values(values).returning();
       
       return result[0];
     } catch (err) {
@@ -274,11 +276,12 @@ export class PostgresStorage implements IStorage {
     if (insertWords.length === 0) return [];
     
     try {
+      // Chuyển đổi từ InsertVocabularyWord sang định dạng dữ liệu thích hợp cho drizzle
       const values = insertWords.map(word => ({
-        groupId: word.groupId,
+        group_id: word.groupId,
         word: word.word,
         ipa: word.ipa,
-        partOfSpeech: word.partOfSpeech,
+        part_of_speech: word.partOfSpeech,
         definition: word.definition,
         meanings: word.meanings,
         learned: false,

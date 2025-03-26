@@ -27,14 +27,15 @@ CREATE TABLE IF NOT EXISTS vocabulary_words (
   learned BOOLEAN NOT NULL DEFAULT FALSE,
   level INTEGER NOT NULL DEFAULT 1,
   last_studied TIMESTAMP,
-  studied_today BOOLEAN NOT NULL DEFAULT FALSE
+  studied_today BOOLEAN NOT NULL DEFAULT FALSE,
+  last_studied_date TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- Tạo bảng user_stats nếu cần thiết
 CREATE TABLE IF NOT EXISTS user_stats (
   id SERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  date TIMESTAMP NOT NULL DEFAULT NOW(),
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   words_studied INTEGER NOT NULL DEFAULT 0,
   words_learned INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT NOW()

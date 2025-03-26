@@ -19,9 +19,7 @@ async function applyMigrations() {
   // Tạo kết nối PostgreSQL
   const client = new Client({
     connectionString: databaseUrl,
-    ssl: {
-      rejectUnauthorized: false // Cần thiết cho kết nối SSL tới Render/Neon
-    }
+    ssl: true // Cấu hình SSL cho Neon
   });
 
   try {
