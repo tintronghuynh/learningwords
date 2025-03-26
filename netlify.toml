@@ -14,6 +14,11 @@
   to = "https://vocab-learning-api2.onrender.com/api/:splat"
   status = 200
   force = true
+  
+  # Cấu hình thêm cho API redirects
+  [redirects.headers]
+    X-From = "Netlify"
+    X-Api-Key = "special-key-for-render"
 
 # Headers cho API redirect
 [[headers]]
@@ -23,6 +28,8 @@
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     Access-Control-Allow-Headers = "Content-Type, Authorization, Accept, X-Requested-With"
     Access-Control-Allow-Credentials = "true"
+    Cache-Control = "no-cache"
+    X-Forwarded-Host = "benevolent-sopapilla-c9c9e9.netlify.app"
 
 # Chuyển hướng mặc định cho SPA
 [[redirects]]

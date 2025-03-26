@@ -42,14 +42,29 @@ export async function apiRequest(
   // Thêm options cấu hình CORS cho môi trường production
   const fetchOptions: RequestInit = {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: data ? { 
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    } : {
+      "Accept": "application/json"
+    },
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
-    // Thêm mode: "cors" để đảm bảo CORS hoạt động chính xác
+    credentials: "same-origin", // Thay đổi từ "include" sang "same-origin" vì đã sử dụng proxy từ Netlify
     mode: "cors"
   };
   
+  console.log(`Sending ${method} request to ${apiUrl}`);
   const res = await fetch(apiUrl, fetchOptions);
+  
+  if (!res.ok) {
+    console.error(`API Error: ${res.status} ${res.statusText}`);
+    try {
+      const errorText = await res.text();
+      console.error(`Error details: ${errorText}`);
+    } catch (e) {
+      console.error('Could not read error details');
+    }
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -64,13 +79,25 @@ export const getQueryFn: <T>(options: {
     const endpoint = queryKey[0] as string;
     const apiUrl = getApiUrl(endpoint);
     
+    console.log(`Query fetch from: ${apiUrl}`);
+    
     const res = await fetch(apiUrl, {
-      credentials: "include",
-      mode: "cors", // Thêm CORS mode
+      credentials: "same-origin", // Thay đổi từ "include" sang "same-origin" vì đã sử dụng proxy từ Netlify
+      mode: "cors",
       headers: {
         "Accept": "application/json"
       }
     });
+    
+    if (!res.ok) {
+      console.error(`Query API Error: ${res.status} ${res.statusText}`);
+      try {
+        const errorText = await res.text();
+        console.error(`Error details: ${errorText}`);
+      } catch (e) {
+        console.error('Could not read error details');
+      }
+    }
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
