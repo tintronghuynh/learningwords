@@ -1,0 +1,31 @@
+# Cấu hình xây dựng
+[build]
+  base = "."
+  publish = "dist/public"
+  command = "npm run build"
+
+# Cấu hình functions
+[functions]
+  directory = "dist/functions"
+
+# Chuyển hướng API đến backend
+[[redirects]]
+  from = "/api/*"
+  to = "https://vocab-learning-api2.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# Headers cho API redirect
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, Accept, X-Requested-With"
+    Access-Control-Allow-Credentials = "true"
+
+# Chuyển hướng mặc định cho SPA
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
