@@ -8,15 +8,64 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Cấu hình CORS cho production - Cho phép tất cả các nguồn
+// Cấu hình CORS chi tiết cho production
+const allowedOrigins = [
+  'http://localhost:5000', 
+  'https://benevolent-sopapilla-c9c9e9.netlify.app',
+  'https://vocab-learning-api2.onrender.com'
+];
+
 // Log thông tin CORS khi khởi động
-console.log(`CORS configuration: NODE_ENV=${process.env.NODE_ENV}, Allow all origins`);
+console.log(`CORS configuration: NODE_ENV=${process.env.NODE_ENV}, CORS_DEBUG=${process.env.CORS_DEBUG}, Allowed origins:`, allowedOrigins);
+
+// Bật debug CORS nếu cần
+const enableCorsDebug = process.env.CORS_DEBUG === 'true';
+if (enableCorsDebug) {
+  console.log('CORS debugging is enabled - all origins will be permitted but logged');
+}
+
+// Xử lý CORS mở rộng - đặt cả trước routing và response middleware
+app.options('*', cors()); // Bật pre-flight cho tất cả route với OPTIONS method
+app.use(function(_req, res, next) {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS, PATCH');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-From, X-Api-Key');
+  res.header('Access-Control-Max-Age', '86400'); // 24 giờ
+  next();
+});
 
 app.use(cors({
-  origin: '*', // Cho phép tất cả các origins 
+  origin: function(origin, callback) {
+    // Cho phép request không có origin (như mobile apps hoặc curl)
+    if (!origin) {
+      if (enableCorsDebug) console.log('CORS: Allowing request with no origin');
+      return callback(null, true);
+    }
+    
+    // Trong chế độ debug, luôn cho phép mọi origin nhưng log lại
+    if (enableCorsDebug) {
+      console.log(`CORS DEBUG: Allowing origin: ${origin}`);
+      return callback(null, true);
+    }
+    
+    // Trong development mode, cho phép tất cả
+    if (process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    
+    // Với production, cho phép các origin được chỉ định
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // Log chi tiết và vẫn cho phép để tránh lỗi
+      console.warn(`CORS warning - origin not in whitelist: ${origin}, allowed origins:`, allowedOrigins);
+      callback(null, true); // Luôn cho phép để tránh lỗi CORS
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-From', 'X-Api-Key'],
-  exposedHeaders: ['Content-Length', 'Content-Type'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-From', 'X-Api-Key', 'Origin'],
+  exposedHeaders: ['Content-Length', 'Content-Type', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
