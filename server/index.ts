@@ -11,18 +11,18 @@ app.use(express.urlencoded({ extended: false }));
 // Cấu hình CORS cho production
 const allowedOrigins = process.env.ALLOWED_ORIGINS 
   ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:5000'];
+  : ['http://localhost:5000', 'https://benevolent-sopapilla-c9c9e9.netlify.app'];
 
 // Log thông tin CORS khi khởi động
 console.log(`CORS configuration: NODE_ENV=${process.env.NODE_ENV}, Allowed origins:`, allowedOrigins);
 
 app.use(cors({
   origin: function(origin, callback) {
-    // Cho phép requests không có origin (như mobile apps hoặc curl requests)
+    // Cho phép requests không có origin (như mobile apps, curl requests hoặc khi gọi từ Netlify functions)
     if (!origin) return callback(null, true);
     
     // Kiểm tra nếu origin nằm trong danh sách được phép
-    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+    if (allowedOrigins.some(allowed => origin.indexOf(allowed) !== -1) || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
       // Log rejected origins để dễ debug
@@ -32,7 +32,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'Origin'],
   exposedHeaders: ['Content-Length', 'Content-Type']
 }));
 
