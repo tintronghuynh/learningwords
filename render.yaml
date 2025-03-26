@@ -8,4 +8,6 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_67sDSLEHNOCm@ep-floral-cake-a1usgp6h-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+        sync: false # Sẽ cấu hình thủ công trong Render dashboard
+      - key: ALLOWED_ORIGINS
+        value: "https://benevolent-sopapilla-c9c9e9.netlify.app"

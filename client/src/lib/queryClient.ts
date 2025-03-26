@@ -17,21 +17,15 @@ function getApiUrl(endpoint: string): string {
   // Đảm bảo endpoint bắt đầu bằng / nếu chưa có
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   
-  // Trong môi trường production, luôn sử dụng URL trực tiếp đến Render backend
+  // Trong môi trường production
   if (import.meta.env.PROD) {
-    // Lấy baseUrl từ biến môi trường VITE_API_URL
-    const apiBaseUrl = 'https://vocab-learning-api2.onrender.com';
+    // Nếu endpoint đã bắt đầu với /api, không thêm đường dẫn
+    if (normalizedEndpoint.startsWith('/api')) {
+      return normalizedEndpoint; // Sử dụng Netlify proxy
+    }
     
-    // Loại bỏ dấu / ở cuối URL nếu có
-    const baseUrl = apiBaseUrl.endsWith('/') ? apiBaseUrl.slice(0, -1) : apiBaseUrl;
-    
-    // Xây dựng URL API đầy đủ
-    const fullApiUrl = normalizedEndpoint.startsWith('/api/') 
-      ? `${baseUrl}${normalizedEndpoint}` // Giữ nguyên /api/ nếu đã có
-      : `${baseUrl}/api${normalizedEndpoint}`; // Thêm /api/ nếu chưa có
-      
-    console.log(`Direct API call to: ${fullApiUrl}`);
-    return fullApiUrl;
+    // Nếu không, thêm /api vào đầu để sử dụng Netlify proxy
+    return `/api${normalizedEndpoint}`;
   }
   
   // Trong môi trường development, sử dụng đường dẫn tương đối
@@ -48,25 +42,17 @@ export async function apiRequest(
   // Thêm options cấu hình CORS cho môi trường production
   const fetchOptions: RequestInit = {
     method,
-    headers: data ? { 
-      "Content-Type": "application/json",
-    } : {},
+    headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
-    // Trong production, loại bỏ credentials để tránh vấn đề CORS
-    credentials: import.meta.env.PROD ? "omit" : "include", 
+    credentials: "include",
     // Thêm mode: "cors" để đảm bảo CORS hoạt động chính xác
     mode: "cors"
   };
   
-  try {
-    console.log(`Sending ${method} request to: ${apiUrl}`);
-    const res = await fetch(apiUrl, fetchOptions);
-    await throwIfResNotOk(res);
-    return res;
-  } catch (error: any) {
-    console.error(`API request error (${method} ${apiUrl}):`, error.message);
-    throw error;
-  }
+  const res = await fetch(apiUrl, fetchOptions);
+
+  await throwIfResNotOk(res);
+  return res;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -78,29 +64,20 @@ export const getQueryFn: <T>(options: {
     const endpoint = queryKey[0] as string;
     const apiUrl = getApiUrl(endpoint);
     
-    const fetchOptions = {
-      // Trong production, loại bỏ credentials để tránh vấn đề CORS
-      credentials: import.meta.env.PROD ? "omit" as const : "include" as const,
-      mode: "cors" as const,
+    const res = await fetch(apiUrl, {
+      credentials: "include",
+      mode: "cors", // Thêm CORS mode
       headers: {
         "Accept": "application/json"
       }
-    };
-    
-    try {
-      console.log(`Sending GET request to: ${apiUrl}`);
-      const res = await fetch(apiUrl, fetchOptions);
-  
-      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-        return null;
-      }
-  
-      await throwIfResNotOk(res);
-      return await res.json();
-    } catch (error: any) {
-      console.error(`Query error (${endpoint}):`, error.message);
-      throw error;
+    });
+
+    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+      return null;
     }
+
+    await throwIfResNotOk(res);
+    return await res.json();
   };
 
 export const queryClient = new QueryClient({

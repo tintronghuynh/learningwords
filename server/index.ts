@@ -8,23 +8,40 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Cấu hình CORS - cho phép tất cả origins trong môi trường production
+// Cấu hình CORS cho production
+const allowedOrigins = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',') 
+  : ['http://localhost:5000'];
+
 // Log thông tin CORS khi khởi động
-console.log(`CORS configuration: NODE_ENV=${process.env.NODE_ENV}, Allowing all origins in production`);
+console.log(`CORS configuration: NODE_ENV=${process.env.NODE_ENV}, Allowed origins:`, allowedOrigins);
 
 app.use(cors({
-  // Cho phép tất cả các origins
-  origin: '*',
-  // Không sử dụng credentials trong production để tránh vấn đề CORS
-  credentials: false,
+  origin: function(origin, callback) {
+    // Cho phép requests không có origin (như mobile apps hoặc curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Kiểm tra nếu origin nằm trong danh sách được phép
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      // Log rejected origins để dễ debug
+      console.warn(`CORS rejected origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
   exposedHeaders: ['Content-Length', 'Content-Type']
 }));
 
 // Thêm middleware để set headers bảo mật
 app.use((req, res, next) => {
-  // Trong môi trường production, thêm các headers bảo mật
+  // Thêm các headers bảo mật
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Trong môi trường production, thêm các headers bảo mật bổ sung
   if (process.env.NODE_ENV === 'production') {
     res.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     res.header('X-Content-Type-Options', 'nosniff');
