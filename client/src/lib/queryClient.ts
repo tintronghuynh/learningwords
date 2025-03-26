@@ -19,13 +19,16 @@ function getApiUrl(endpoint: string): string {
   
   // Trong môi trường production
   if (import.meta.env.PROD) {
-    // Nếu endpoint đã bắt đầu với /api, không thêm đường dẫn
+    // Kết nối trực tiếp đến API backend thay vì qua Netlify proxy
+    const API_BASE_URL = 'https://vocab-learning-api2.onrender.com';
+    
+    // Nếu endpoint đã bắt đầu với /api, chuyển đổi đúng đường dẫn
     if (normalizedEndpoint.startsWith('/api')) {
-      return normalizedEndpoint; // Sử dụng Netlify proxy
+      return `${API_BASE_URL}${normalizedEndpoint}`;
     }
     
-    // Nếu không, thêm /api vào đầu để sử dụng Netlify proxy
-    return `/api${normalizedEndpoint}`;
+    // Nếu không, thêm /api vào đầu
+    return `${API_BASE_URL}/api${normalizedEndpoint}`;
   }
   
   // Trong môi trường development, sử dụng đường dẫn tương đối
@@ -49,25 +52,31 @@ export async function apiRequest(
       "Accept": "application/json"
     },
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "same-origin", // Thay đổi từ "include" sang "same-origin" vì đã sử dụng proxy từ Netlify
+    credentials: "omit", // Thay đổi thành "omit" vì chúng ta gọi trực tiếp đến API
     mode: "cors"
   };
   
   console.log(`Sending ${method} request to ${apiUrl}`);
-  const res = await fetch(apiUrl, fetchOptions);
   
-  if (!res.ok) {
-    console.error(`API Error: ${res.status} ${res.statusText}`);
-    try {
-      const errorText = await res.text();
-      console.error(`Error details: ${errorText}`);
-    } catch (e) {
-      console.error('Could not read error details');
+  try {
+    const res = await fetch(apiUrl, fetchOptions);
+    
+    if (!res.ok) {
+      console.error(`API Error: ${res.status} ${res.statusText}`);
+      try {
+        const errorText = await res.text();
+        console.error(`Error details: ${errorText}`);
+      } catch (e) {
+        console.error('Could not read error details');
+      }
     }
+  
+    await throwIfResNotOk(res);
+    return res;
+  } catch (error) {
+    console.error('Fetch failed:', error);
+    throw error;
   }
-
-  await throwIfResNotOk(res);
-  return res;
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -81,30 +90,35 @@ export const getQueryFn: <T>(options: {
     
     console.log(`Query fetch from: ${apiUrl}`);
     
-    const res = await fetch(apiUrl, {
-      credentials: "same-origin", // Thay đổi từ "include" sang "same-origin" vì đã sử dụng proxy từ Netlify
-      mode: "cors",
-      headers: {
-        "Accept": "application/json"
+    try {
+      const res = await fetch(apiUrl, {
+        credentials: "omit", // Thay đổi thành "omit" vì chúng ta gọi trực tiếp đến API
+        mode: "cors",
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+      
+      if (!res.ok) {
+        console.error(`Query API Error: ${res.status} ${res.statusText}`);
+        try {
+          const errorText = await res.text();
+          console.error(`Error details: ${errorText}`);
+        } catch (e) {
+          console.error('Could not read error details');
+        }
       }
-    });
-    
-    if (!res.ok) {
-      console.error(`Query API Error: ${res.status} ${res.statusText}`);
-      try {
-        const errorText = await res.text();
-        console.error(`Error details: ${errorText}`);
-      } catch (e) {
-        console.error('Could not read error details');
+  
+      if (unauthorizedBehavior === "returnNull" && res.status === 401) {
+        return null;
       }
+  
+      await throwIfResNotOk(res);
+      return await res.json();
+    } catch (error) {
+      console.error('Query fetch failed:', error);
+      throw error;
     }
-
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
-
-    await throwIfResNotOk(res);
-    return await res.json();
   };
 
 export const queryClient = new QueryClient({

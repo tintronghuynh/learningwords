@@ -8,36 +8,14 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Cấu hình CORS cho production
-const allowedOrigins = process.env.ALLOWED_ORIGINS 
-  ? process.env.ALLOWED_ORIGINS.split(',') 
-  : ['http://localhost:5000', 'https://benevolent-sopapilla-c9c9e9.netlify.app'];
-
+// Cấu hình CORS cho production - Cho phép tất cả các nguồn
 // Log thông tin CORS khi khởi động
-console.log(`CORS configuration: NODE_ENV=${process.env.NODE_ENV}, Allowed origins:`, allowedOrigins);
+console.log(`CORS configuration: NODE_ENV=${process.env.NODE_ENV}, Allow all origins`);
 
 app.use(cors({
-  origin: function(origin, callback) {
-    // Cho phép requests không có origin (như mobile apps hoặc curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Cho phép tất cả các origins trong môi trường phát triển
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    
-    // Kiểm tra nếu origin nằm trong danh sách được phép
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      // Log rejected origins để dễ debug
-      console.warn(`CORS rejected origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+  origin: '*', // Cho phép tất cả các origins 
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-From', 'X-Api-Key'],
   exposedHeaders: ['Content-Length', 'Content-Type'],
   preflightContinue: false,
   optionsSuccessStatus: 204
