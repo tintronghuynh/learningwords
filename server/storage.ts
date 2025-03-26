@@ -194,24 +194,30 @@ export class PostgresStorage implements IStorage {
 
   async getVocabularyGroups(userId: number): Promise<VocabularyGroup[]> {
     try {
+      // Sử dụng Drizzle Query Builder thay vì truy vấn SQL thuần
       const result = await db.select().from(vocabularyGroups)
         .where(eq(vocabularyGroups.userId, userId));
       
       return result;
     } catch (err) {
       console.error("Error getting vocabulary groups:", err);
+      // In log chi tiết để debug
+      console.error("Query details:", { userId });
       return [];
     }
   }
 
   async getVocabularyGroup(id: number): Promise<VocabularyGroup | undefined> {
     try {
+      // Sử dụng Drizzle Query Builder thay vì SQL thuần
       const result = await db.select().from(vocabularyGroups)
         .where(eq(vocabularyGroups.id, id));
       
       return result[0];
     } catch (err) {
       console.error("Error getting vocabulary group:", err);
+      // In log chi tiết để debug
+      console.error("Query details:", { id });
       return undefined;
     }
   }
@@ -251,8 +257,8 @@ export class PostgresStorage implements IStorage {
   // Vocabulary Word operations
   async createVocabularyWord(insertWord: InsertVocabularyWord): Promise<VocabularyWord> {
     try {
-      // Chuyển đổi từ InsertVocabularyWord sang định dạng dữ liệu thích hợp cho drizzle
-      const values = {
+      // Sử dụng snake_case để phù hợp với cấu trúc cột trong cơ sở dữ liệu
+      const result = await db.insert(vocabularyWords).values({
         group_id: insertWord.groupId,
         word: insertWord.word,
         ipa: insertWord.ipa,
@@ -261,9 +267,7 @@ export class PostgresStorage implements IStorage {
         meanings: insertWord.meanings,
         learned: false,
         level: 1,
-      };
-      
-      const result = await db.insert(vocabularyWords).values(values).returning();
+      }).returning();
       
       return result[0];
     } catch (err) {
@@ -277,6 +281,7 @@ export class PostgresStorage implements IStorage {
     
     try {
       // Chuyển đổi từ InsertVocabularyWord sang định dạng dữ liệu thích hợp cho drizzle
+      // Sử dụng snake_case để phù hợp với cấu trúc cột trong cơ sở dữ liệu
       const values = insertWords.map(word => ({
         group_id: word.groupId,
         word: word.word,
@@ -612,34 +617,12 @@ export class PostgresStorage implements IStorage {
 
   async recordWordStudied(userId: number): Promise<UserStats> {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Find today's stats
-      const todayStatsResult = await db.select().from(userStats)
-        .where(and(
-          eq(userStats.userId, userId),
-          sql`DATE(${userStats.date}) = DATE(${today.toISOString()})`
-        ));
-      
-      let result;
-      
-      if (todayStatsResult.length > 0) {
-        // Update existing stats
-        result = await db.update(userStats)
-          .set({ 
-            wordsStudied: todayStatsResult[0].wordsStudied + 1 
-          })
-          .where(eq(userStats.id, todayStatsResult[0].id))
-          .returning();
-      } else {
-        // Create new stats
-        result = await db.insert(userStats).values({
-          userId,
-          wordsStudied: 1,
-          wordsLearned: 0,
-        }).returning();
-      }
+      // Đơn giản hóa: luôn tạo bản ghi mới cho mỗi lần học
+      const result = await db.insert(userStats).values({
+        userId,
+        wordsStudied: 1,
+        wordsLearned: 0,
+      }).returning();
       
       return result[0];
     } catch (err) {
@@ -650,34 +633,12 @@ export class PostgresStorage implements IStorage {
 
   async recordWordLearned(userId: number): Promise<UserStats> {
     try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Find today's stats
-      const todayStatsResult = await db.select().from(userStats)
-        .where(and(
-          eq(userStats.userId, userId),
-          sql`DATE(${userStats.date}) = DATE(${today.toISOString()})`
-        ));
-      
-      let result;
-      
-      if (todayStatsResult.length > 0) {
-        // Update existing stats
-        result = await db.update(userStats)
-          .set({ 
-            wordsLearned: todayStatsResult[0].wordsLearned + 1 
-          })
-          .where(eq(userStats.id, todayStatsResult[0].id))
-          .returning();
-      } else {
-        // Create new stats
-        result = await db.insert(userStats).values({
-          userId,
-          wordsStudied: 0,
-          wordsLearned: 1,
-        }).returning();
-      }
+      // Đơn giản hóa: luôn tạo bản ghi mới cho mỗi từ được học
+      const result = await db.insert(userStats).values({
+        userId,
+        wordsStudied: 0,
+        wordsLearned: 1,
+      }).returning();
       
       return result[0];
     } catch (err) {
