@@ -44,27 +44,37 @@ export async function apiRequest(
   
   console.log(`Sending ${method} request to ${apiUrl}`);
   
-  // Chỉ sử dụng một cách thức duy nhất cho tất cả các request
+  // Cấu hình headers phù hợp
+  const headers: Record<string, string> = {
+    "Accept": "application/json",
+    "Origin": window.location.origin
+  };
+  
+  // Thêm Content-Type cho các request có body
+  if (data) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  // Cấu hình fetch options
   const fetchOptions: RequestInit = {
-    method, 
-    headers: data ? { 
-      "Content-Type": "application/json", 
-      "Accept": "application/json",
-      "Origin": window.location.origin
-    } : {
-      "Accept": "application/json",
-      "Origin": window.location.origin
-    },
+    method,
+    headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "omit",
+    credentials: "include", // Thay đổi từ "omit" thành "include" để hỗ trợ cookies nếu cần
     mode: "cors"
   };
   
   try {
+    console.log(`Sending ${method} request to ${apiUrl} with options:`, 
+      { ...fetchOptions, body: data ? 'Data present' : 'No data' });
+    
+    // Thực hiện request
     const res = await fetch(apiUrl, fetchOptions);
     
-    console.log(`${method} response status: ${res.status}, type: ${res.type}`);
+    console.log(`${method} response status: ${res.status}, type: ${res.type}`, 
+      { url: apiUrl, ok: res.ok, statusText: res.statusText });
     
+    // Log lỗi nếu có
     if (!res.ok) {
       console.error(`API Error: ${res.status} ${res.statusText}`);
       try {
@@ -77,9 +87,9 @@ export async function apiRequest(
     
     return res;
   } catch (error) {
-    console.error('Fetch failed:', error);
+    console.error(`Fetch failed (${method} ${apiUrl}):`, error);
     
-    // Trong trường hợp lỗi do CORS, tạo response tạm thời để UI không bị crash
+    // Trong trường hợp lỗi do CORS hoặc kết nối, tạo response tạm thời để UI không bị crash
     if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
       console.warn('Possible CORS error, creating placeholder response');
       
@@ -102,19 +112,19 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
+export const getQueryFn = <TData>(options: {
   on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
+}): QueryFunction<TData> => {
+  return async ({ queryKey }) => {
     const endpoint = queryKey[0] as string;
     const apiUrl = getApiUrl(endpoint);
+    const { on401: unauthorizedBehavior } = options;
     
     console.log(`Query fetch from: ${apiUrl}`);
     
     try {
       const res = await fetch(apiUrl, {
-        credentials: "omit",
+        credentials: "include", // Thay đổi từ "omit" thành "include" để hỗ trợ cookies nếu cần
         mode: "cors",
         headers: {
           "Accept": "application/json",
@@ -134,7 +144,7 @@ export const getQueryFn: <T>(options: {
         }
         
         if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-          return null;
+          return null as unknown as TData;
         }
         
         // Thử đọc lỗi từ response
@@ -142,7 +152,7 @@ export const getQueryFn: <T>(options: {
       }
       
       // Nếu thành công, đọc dữ liệu JSON
-      return await res.json();
+      return await res.json() as TData;
     } catch (error) {
       console.error('Query fetch failed:', error);
       
@@ -151,21 +161,25 @@ export const getQueryFn: <T>(options: {
         console.warn('Possible CORS error, creating placeholder response for query');
         // Trả về đối tượng trống tùy thuộc vào endpoint
         if (endpoint.includes('stats')) {
-          return {
+          const placeholder = {
             totalGroups: 0,
             totalWords: 0,
             learnedWords: 0,
             daysStudied: 0
-          } as unknown as T;
+          };
+          return placeholder as unknown as TData;
         } else if (endpoint.includes('groups')) {
-          return [] as unknown as T;
+          const placeholder: any[] = [];
+          return placeholder as unknown as TData;
         }
-        return {} as unknown as T;
+        const placeholder = {};
+        return placeholder as unknown as TData;
       }
       
       throw error;
     }
   };
+};
 
 export const queryClient = new QueryClient({
   defaultOptions: {

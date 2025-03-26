@@ -24,51 +24,52 @@ if (enableCorsDebug) {
   console.log('CORS debugging is enabled - all origins will be permitted but logged');
 }
 
-// Xử lý CORS mở rộng - đặt cả trước routing và response middleware
-app.options('*', cors()); // Bật pre-flight cho tất cả route với OPTIONS method
-app.use(function(_req, res, next) {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS, PATCH');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-From, X-Api-Key');
-  res.header('Access-Control-Max-Age', '86400'); // 24 giờ
-  next();
-});
+// Xử lý CORS đơn giản và triệt để hơn
+// Lưu ý: Không thể dùng '*' cho Access-Control-Allow-Origin khi credentials: true
+// Vì vậy, chúng ta sẽ set origin dựa trên nguồn của request
 
+// 1. Cấu hình CORS cơ bản trước, sẽ phản hồi header cho mọi origin
 app.use(cors({
-  origin: function(origin, callback) {
-    // Cho phép request không có origin (như mobile apps hoặc curl)
-    if (!origin) {
-      if (enableCorsDebug) console.log('CORS: Allowing request with no origin');
-      return callback(null, true);
-    }
-    
-    // Trong chế độ debug, luôn cho phép mọi origin nhưng log lại
-    if (enableCorsDebug) {
-      console.log(`CORS DEBUG: Allowing origin: ${origin}`);
-      return callback(null, true);
-    }
-    
-    // Trong development mode, cho phép tất cả
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    
-    // Với production, cho phép các origin được chỉ định
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      // Log chi tiết và vẫn cho phép để tránh lỗi
-      console.warn(`CORS warning - origin not in whitelist: ${origin}, allowed origins:`, allowedOrigins);
-      callback(null, true); // Luôn cho phép để tránh lỗi CORS
-    }
-  },
-  credentials: true,
+  origin: true, // Phản hồi với origin của request
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With', 'X-From', 'X-Api-Key', 'Origin'],
-  exposedHeaders: ['Content-Length', 'Content-Type', 'Access-Control-Allow-Origin', 'Access-Control-Allow-Credentials'],
-  preflightContinue: false,
+  credentials: true,
   optionsSuccessStatus: 204
 }));
+
+// 2. Thêm middleware CORS thủ công để xử lý các trường hợp phức tạp
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Phản hồi với origin của request, thay vì '*' để hỗ trợ credentials
+  if (origin) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  
+  // Cho phép các phương thức cụ thể
+  res.header('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS, PATCH');
+  
+  // Cho phép các headers cần thiết
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-From, X-Api-Key');
+  
+  // Cho phép credentials (cookies, authorization headers)
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Cache preflight requests (OPTIONS) trong 24 giờ
+  res.header('Access-Control-Max-Age', '86400');
+  
+  // Debug logs
+  if (enableCorsDebug) {
+    console.log(`CORS: Processing request from origin: ${origin || 'unknown'}`);
+  }
+
+  // Xử lý preflight requests
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204); // No content for OPTIONS
+  } else {
+    next();
+  }
+});
 
 // Thêm middleware để set headers bảo mật
 app.use((req, res, next) => {
